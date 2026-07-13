@@ -10,4 +10,9 @@ services:
       - SEEDANCE_API_KEY=${SEEDANCE_API_KEY:-}
       - SEEDANCE_API_BASE=${SEEDANCE_API_BASE:-https://token.manateeai.com}
       - SEEDANCE_TIMEOUT=${SEEDANCE_TIMEOUT:-180}
+    volumes:
+      - seedance-data:/app/data
     restart: unless-stopped
+
+volumes:
+  seedance-data:

@@ -1,13 +1,18 @@
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import GenerateForm from './components/GenerateForm.vue'
 import ResultPanel from './components/ResultPanel.vue'
 import HistoryList from './components/HistoryList.vue'
+import LoginView from './components/LoginView.vue'
+import SettingsDialog from './components/SettingsDialog.vue'
+import { useAuth } from './composables/useAuth'
 import { generate, fetchStatus } from './api'
 import { useHistory } from './composables/useHistory'
 
 const { history, add, update, remove, clear } = useHistory()
+const { authed, ready, checkSession, logout } = useAuth()
+const showSettings = ref(false)
 
 const POLL_MS = 5000
 // 终态：其余一律视为“进行中”，需要继续轮询
@@ -116,19 +121,34 @@ function onClear() {
   clear()
 }
 
-// 页面加载/刷新时，为历史里所有未完成任务自动恢复并行轮询
-history.value.forEach((h) => {
-  if (!isTerminal(h.status)) startPolling(h.taskId)
+// 恢复历史中未完成任务的轮询（startPolling 自带去重，重复调用安全）
+function resumePolling() {
+  history.value.forEach((h) => {
+    if (!isTerminal(h.status)) startPolling(h.taskId)
+  })
+}
+
+// 登录态 false→true 时恢复轮询：覆盖“加载时已登录”与“会话内登录”两种情况
+watch(authed, (now, prev) => {
+  if (now && !prev) resumePolling()
 })
+
+// 挂载时确认会话；已登录会触发上面的 watch 从而恢复轮询
+onMounted(checkSession)
 
 onUnmounted(stopAll)
 </script>
 
 <template>
-  <el-container class="app">
+  <LoginView v-if="ready && !authed" />
+
+  <el-container v-else-if="ready && authed" class="app">
     <el-header class="header">
       <span class="logo">🎬 SeeDance 视频生成测试台</span>
       <span class="sub">输入提示词，测试 dreamina-seedance 视频生成（多任务并行）</span>
+      <span class="spacer" />
+      <el-button text @click="showSettings = true">⚙️ 设置</el-button>
+      <el-button text @click="logout">退出登录</el-button>
     </el-header>
 
     <el-main>
@@ -158,6 +178,8 @@ onUnmounted(stopAll)
         </div>
       </div>
     </el-main>
+
+    <SettingsDialog v-model="showSettings" />
   </el-container>
 </template>
 
@@ -178,6 +200,9 @@ onUnmounted(stopAll)
 .sub {
   color: #909399;
   font-size: 13px;
+}
+.spacer {
+  flex: 1;
 }
 .grid {
   display: grid;

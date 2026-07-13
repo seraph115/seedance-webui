@@ -8,9 +8,10 @@
 运行：
     uvicorn app:app --reload --port 8000
 """
+import os
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -18,7 +19,24 @@ from pydantic import BaseModel, Field
 import config
 import seedance
 
+from starlette.middleware.sessions import SessionMiddleware
+
+import auth
+import settings_store
+
 app = FastAPI(title="SeeDance 视频生成测试台")
+
+# 首次启动生成并打印 admin 密码（仅一次），并装配签名 Cookie 会话
+_first_run_pw = auth.ensure_admin()
+if _first_run_pw:
+    auth.announce_password(_first_run_pw)  # Task 1 提供的公共打印助手，保持 DRY
+
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=auth.get_secret_key(),
+    same_site="lax",
+    https_only=os.getenv("SEEDANCE_HTTPS_ONLY", "").lower() in ("1", "true", "yes"),
+)
 
 # 开发时前端跑在 Vite(5173)，允许跨域；生产同源则无所谓
 app.add_middleware(
@@ -40,7 +58,16 @@ class GenerateRequest(BaseModel):
     images: list[str] | None = None
 
 
-@app.get("/api/models")
+class LoginRequest(BaseModel):
+    password: str
+
+
+class SettingsRequest(BaseModel):
+    api_key: str | None = None
+    api_base: str | None = None
+
+
+@app.get("/api/models", dependencies=[Depends(auth.require_auth)])
 def list_models():
     """返回可选模型与参数枚举，供前端下拉。"""
     return {
@@ -50,11 +77,13 @@ def list_models():
     }
 
 
-@app.post("/api/generate")
+@app.post("/api/generate", dependencies=[Depends(auth.require_auth)])
 def generate(req: GenerateRequest):
     """提交生成任务，返回 task_id。"""
     if not req.prompt.strip():
         raise HTTPException(status_code=400, detail="prompt 不能为空")
+    if not settings_store.get_api_key():
+        raise HTTPException(status_code=400, detail="请先在设置中配置 API_KEY")
     payload = seedance.build_payload(
         mode=req.mode,
         prompt=req.prompt,
@@ -72,13 +101,47 @@ def generate(req: GenerateRequest):
     return {"task_id": result["task_id"], "payload": payload}
 
 
-@app.get("/api/status/{task_id}")
+@app.get("/api/status/{task_id}", dependencies=[Depends(auth.require_auth)])
 def status(task_id: str):
     """单次查询任务状态。"""
     try:
         return seedance.query(task_id)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"查询失败：{e}")
+
+
+@app.post("/api/login")
+def login(req: LoginRequest, request: Request):
+    """校验密码，成功则在会话里置 authed。"""
+    auth.check_not_locked()
+    if not auth.verify_password(req.password):
+        auth.register_fail()
+        raise HTTPException(status_code=401, detail="密码错误")
+    auth.register_success()
+    request.session["authed"] = True
+    return {"ok": True}
+
+
+@app.post("/api/logout")
+def logout(request: Request):
+    request.session.clear()
+    return {"ok": True}
+
+
+@app.get("/api/session")
+def session_state(request: Request):
+    return {"authed": bool(request.session.get("authed"))}
+
+
+@app.get("/api/settings", dependencies=[Depends(auth.require_auth)])
+def read_settings():
+    return settings_store.describe()
+
+
+@app.put("/api/settings", dependencies=[Depends(auth.require_auth)])
+def write_settings(req: SettingsRequest):
+    settings_store.set_settings(api_key=req.api_key, api_base=req.api_base)
+    return settings_store.describe()
 
 
 # ---- 托管前端构建产物（存在时才挂载，开发阶段没有 dist 也不影响 API）----
