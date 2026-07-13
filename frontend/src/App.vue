@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onUnmounted, onMounted } from 'vue'
+import { ref, computed, onUnmounted, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import GenerateForm from './components/GenerateForm.vue'
 import ResultPanel from './components/ResultPanel.vue'
@@ -121,15 +121,20 @@ function onClear() {
   clear()
 }
 
-// 先确认会话，登录后再恢复历史中未完成任务的轮询
-onMounted(async () => {
-  await checkSession()
-  if (authed.value) {
-    history.value.forEach((h) => {
-      if (!isTerminal(h.status)) startPolling(h.taskId)
-    })
-  }
+// 恢复历史中未完成任务的轮询（startPolling 自带去重，重复调用安全）
+function resumePolling() {
+  history.value.forEach((h) => {
+    if (!isTerminal(h.status)) startPolling(h.taskId)
+  })
+}
+
+// 登录态 false→true 时恢复轮询：覆盖“加载时已登录”与“会话内登录”两种情况
+watch(authed, (now, prev) => {
+  if (now && !prev) resumePolling()
 })
+
+// 挂载时确认会话；已登录会触发上面的 watch 从而恢复轮询
+onMounted(checkSession)
 
 onUnmounted(stopAll)
 </script>
