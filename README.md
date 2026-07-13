@@ -101,6 +101,19 @@ docker compose up -d --build
 
 > 端口冲突时改左侧映射即可，如 `-p 18080:8000`，再访问 `http://localhost:18080`。
 
+## 登录与密钥配置
+
+- **首次启动**：后端会自动生成管理员密码并打印到控制台，形如
+  `ADMIN PASSWORD (save this): xxxxx`。请妥善保存——它只在首次生成时显示一次。
+  哈希存储在 `data/admin.json`（已 gitignore）。
+- **登录**：打开页面后先输入该密码登录，整个应用都在登录之后。
+- **配置 API_KEY**：登录后点击右上角 **⚙️ 设置**，填入 API_KEY（可选 API_BASE）并保存。
+  值写入 `data/settings.json`，重启后仍生效；未配置时回退到环境变量 `SEEDANCE_API_KEY`。
+- **持久化**：Docker 部署已将 `data/` 挂载为命名卷 `seedance-data`，
+  重建容器后管理员密码与已配置的 key 均保留。
+- **重置管理员密码**：删除 `data/admin.json` 后重启，会重新生成并打印新密码。
+- 若通过 HTTPS 部署，可设置 `SEEDANCE_HTTPS_ONLY=1` 让登录会话 Cookie 带上 `Secure` 标记。
+
 ## 接口说明
 
 | 方法 | 路径 | 说明 |
