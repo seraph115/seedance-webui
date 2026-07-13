@@ -8,6 +8,7 @@
 运行：
     uvicorn app:app --reload --port 8000
 """
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Depends, Request
@@ -34,7 +35,7 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=auth.get_secret_key(),
     same_site="lax",
-    https_only=False,
+    https_only=os.getenv("SEEDANCE_HTTPS_ONLY", "").lower() in ("1", "true", "yes"),
 )
 
 # 开发时前端跑在 Vite(5173)，允许跨域；生产同源则无所谓
