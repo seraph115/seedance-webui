@@ -592,9 +592,7 @@ Immediately after `app = FastAPI(title="SeeDance 视频生成测试台")` (line 
 # 首次启动生成并打印 admin 密码（仅一次），并装配签名 Cookie 会话
 _first_run_pw = auth.ensure_admin()
 if _first_run_pw:
-    print("=" * 60)
-    print(f"  ADMIN PASSWORD (save this): {_first_run_pw}")
-    print("=" * 60)
+    auth.announce_password(_first_run_pw)  # Task 1 提供的公共打印助手，保持 DRY
 
 app.add_middleware(
     SessionMiddleware,
