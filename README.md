@@ -113,6 +113,7 @@ docker compose up -d --build
   重建容器后管理员密码与已配置的 key 均保留。
 - **重置管理员密码**：删除 `data/admin.json` 后重启，会重新生成并打印新密码。
 - 若通过 HTTPS 部署，可设置 `SEEDANCE_HTTPS_ONLY=1` 让登录会话 Cookie 带上 `Secure` 标记。
+- **单进程运行**：管理员凭据与会话签名密钥在进程内首次启动时生成，登录限流也是进程内状态。请勿在没有外部会话/密钥存储的情况下用多 worker（如 `uvicorn --workers N`）启动，否则各 worker 可能生成不一致的密钥导致偶发 401。默认镜像为单 worker，无需担心。
 
 ## 接口说明
 
