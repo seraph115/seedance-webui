@@ -60,11 +60,25 @@ def ensure_admin() -> str | None:
 
 
 def get_secret_key() -> str:
+    """返回持久化的会话签名密钥。
+
+    约定：调用方应先调用 ensure_admin()。若此处发现凭据缺失而不得不生成，
+    会同样打印一次性明文密码，避免密码被静默丢弃。
+    """
     record = _load()
     if not record or not record.get("secret_key"):
-        ensure_admin()
+        password = ensure_admin()
+        if password:
+            announce_password(password)
         record = _load()
     return record["secret_key"]
+
+
+def announce_password(password: str) -> None:
+    """把一次性明文密码醒目地打印到控制台。"""
+    print("=" * 60)
+    print(f"  ADMIN PASSWORD (save this): {password}")
+    print("=" * 60)
 
 
 def verify_password(password: str) -> bool:

@@ -36,3 +36,11 @@ def test_login_throttle_locks_after_max_fails(data_dir):
     with pytest.raises(HTTPException) as exc:
         auth.check_not_locked()
     assert exc.value.status_code == 429
+
+
+def test_get_secret_key_announces_when_it_must_generate(data_dir, capsys):
+    # 未先调用 ensure_admin() 时，get_secret_key 生成凭据并打印一次性密码
+    key = auth.get_secret_key()
+    assert key
+    out = capsys.readouterr().out
+    assert "ADMIN PASSWORD (save this):" in out
