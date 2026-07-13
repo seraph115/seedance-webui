@@ -1,0 +1,10 @@
+# 减小构建上下文，避免把本地依赖/产物/密钥打进镜像
+**/node_modules
+**/.venv
+**/dist
+**/__pycache__
+*.pyc
+.env
+.git
+.gitignore
+README.md

@@ -1,0 +1,13 @@
+services:
+  seedance-webui:
+    build: .
+    image: seedance-webui:latest
+    container_name: seedance-webui
+    ports:
+      - "8000:8000"
+    environment:
+      # 运行时注入密钥；从当前 shell 或同目录 .env 读取
+      - SEEDANCE_API_KEY=${SEEDANCE_API_KEY:-}
+      - SEEDANCE_API_BASE=${SEEDANCE_API_BASE:-https://token.manateeai.com}
+      - SEEDANCE_TIMEOUT=${SEEDANCE_TIMEOUT:-180}
+    restart: unless-stopped
