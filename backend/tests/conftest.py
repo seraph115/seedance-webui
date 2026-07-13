@@ -16,4 +16,8 @@ def data_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(auth, "ADMIN_FILE", d / "admin.json")
     monkeypatch.setattr(auth, "_fail_count", 0, raising=False)
     monkeypatch.setattr(auth, "_locked_until", 0.0, raising=False)
+
+    import settings_store
+    monkeypatch.setattr(settings_store, "DATA_DIR", d)
+    monkeypatch.setattr(settings_store, "SETTINGS_FILE", d / "settings.json")
     return d
