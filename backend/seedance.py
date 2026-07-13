@@ -10,6 +10,7 @@
 import requests
 
 import config
+import settings_store
 
 
 def build_payload(
@@ -51,7 +52,7 @@ def build_payload(
 
 def submit(payload: dict) -> dict:
     """提交生成任务。成功返回 {"task_id": ...}，失败抛出携带上游可读信息的异常。"""
-    url = f"{config.API_BASE}/v1/video/generations"
+    url = f"{settings_store.get_api_base()}/v1/video/generations"
     resp = requests.post(
         url,
         json=payload,
@@ -83,7 +84,7 @@ def query(task_id: str) -> dict:
         "raw": <原始响应>,
       }
     """
-    url = f"{config.API_BASE}/v1/video/generations/{task_id}"
+    url = f"{settings_store.get_api_base()}/v1/video/generations/{task_id}"
     resp = requests.get(url, headers=_headers(), timeout=config.REQUEST_TIMEOUT)
     resp.raise_for_status()
     res = resp.json()
@@ -118,7 +119,7 @@ def _extract_message(res: dict) -> str:
 
 def _headers() -> dict:
     return {
-        "Authorization": f"Bearer {config.API_KEY}",
+        "Authorization": f"Bearer {settings_store.get_api_key()}",
         "Content-Type": "application/json",
     }
 
