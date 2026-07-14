@@ -17,7 +17,7 @@ seedance-webui/
 ├── backend/            # FastAPI 中转服务
 │   ├── app.py          #   3个接口 + 托管前端产物
 │   ├── seedance.py     #   封装提交/查询（重构自原脚本）
-│   ├── config.py       #   API 地址与密钥（读环境变量）
+│   ├── config.py       #   API 地址与密钥默认值（页面设置优先，环境变量兜底）
 │   └── requirements.txt
 ├── frontend/           # Vue3 + Vite + Element Plus
 │   └── src/
@@ -38,8 +38,8 @@ cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-# 设置密钥（也可 cp ../.env.example ../.env 后 export）
-export SEEDANCE_API_KEY=sk-你的密钥
+# 密钥可选：推荐启动后登录，在页面 ⚙️设置 里配置（会持久化）。
+# 如需用环境变量兜底：export SEEDANCE_API_KEY=sk-你的密钥
 
 uvicorn app:app --reload --port 8000
 ```
@@ -77,17 +77,20 @@ docker build -t seedance-webui:latest .
 
 docker run -d --name seedance-webui \
   -p 8000:8000 \
-  -e SEEDANCE_API_KEY=sk-你的密钥 \
+  -v seedance-data:/app/data \
   seedance-webui:latest
+# 密钥可选：可加 -e SEEDANCE_API_KEY=sk-你的密钥 作兜底，
+# 或登录后在页面 ⚙️设置 里配置（存进 seedance-data 卷，重建容器仍保留）。
 ```
 
-打开 `http://localhost:8000` 即可（前后端同源，无需单独起前端）。
+打开 `http://localhost:8000` 即可（前后端同源，无需单独起前端）。首次启动后端会在日志里打印管理员账号密码。
 
 ### 方式二：docker compose
 
 ```bash
 cd seedance-webui
-export SEEDANCE_API_KEY=sk-你的密钥   # 或写进同目录 .env 文件
+# 密钥可选：export SEEDANCE_API_KEY=sk-你的密钥（或写进同目录 .env），
+# 也可不设，启动后登录在页面 ⚙️设置 里配置。compose 已挂载 data 卷持久化。
 docker compose up -d --build
 ```
 
@@ -95,10 +98,14 @@ docker compose up -d --build
 
 | 变量 | 默认 | 说明 |
 |---|---|---|
-| `SEEDANCE_API_KEY` | 无（必填） | **必须设置为你自己的密钥**，否则调用返回鉴权错误 |
-| `SEEDANCE_API_BASE` | `https://token.manateeai.com` | 中转地址 |
+| `SEEDANCE_API_KEY` | 无（可选） | 密钥兜底值。**推荐登录后在页面 ⚙️设置 里配置**（写入 `data/settings.json`，优先于本变量）；此处只作为未在页面配置时的默认值 |
+| `SEEDANCE_API_BASE` | `https://token.manateeai.com` | 中转地址（同样可在页面设置里覆盖） |
 | `SEEDANCE_TIMEOUT` | `180` | 请求超时（秒） |
+| `ADMIN_USERNAME` | `admin` | 管理员登录用户名 |
+| `SEEDANCE_HTTPS_ONLY` | `false` | 设为 `1` 时会话 Cookie 带 `Secure`（HTTPS 部署用） |
 
+> API_KEY 现在既可用环境变量注入，也可登录后在页面设置里填写并持久化——两者都没配置时，生成视频会提示「请先在设置中配置 API_KEY」。
+>
 > 端口冲突时改左侧映射即可，如 `-p 18080:8000`，再访问 `http://localhost:18080`。
 
 ## 登录与密钥配置
