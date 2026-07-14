@@ -26,10 +26,10 @@ import settings_store
 
 app = FastAPI(title="SeeDance 视频生成测试台")
 
-# 首次启动生成并打印 admin 密码（仅一次），并装配签名 Cookie 会话
+# 首次启动生成并打印 admin 账号密码（仅一次），并装配签名 Cookie 会话
 _first_run_pw = auth.ensure_admin()
 if _first_run_pw:
-    auth.announce_password(_first_run_pw)  # Task 1 提供的公共打印助手，保持 DRY
+    auth.announce_credentials(auth.get_username(), _first_run_pw)
 
 app.add_middleware(
     SessionMiddleware,
@@ -59,6 +59,7 @@ class GenerateRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
+    username: str
     password: str
 
 
@@ -112,11 +113,11 @@ def status(task_id: str):
 
 @app.post("/api/login")
 def login(req: LoginRequest, request: Request):
-    """校验密码，成功则在会话里置 authed。"""
+    """校验用户名与密码，成功则在会话里置 authed。"""
     auth.check_not_locked()
-    if not auth.verify_password(req.password):
+    if not auth.verify_credentials(req.username, req.password):
         auth.register_fail()
-        raise HTTPException(status_code=401, detail="密码错误")
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
     auth.register_success()
     request.session["authed"] = True
     return {"ok": True}

@@ -103,10 +103,11 @@ docker compose up -d --build
 
 ## 登录与密钥配置
 
-- **首次启动**：后端会自动生成管理员密码并打印到控制台，形如
-  `ADMIN PASSWORD (save this): xxxxx`。请妥善保存——它只在首次生成时显示一次。
-  哈希存储在 `data/admin.json`（已 gitignore）。
-- **登录**：打开页面后先输入该密码登录，整个应用都在登录之后。
+- **首次启动**：后端会自动生成管理员账号并打印到控制台，形如
+  `ADMIN USERNAME: admin` 与 `ADMIN PASSWORD (save this): xxxxx`。请妥善保存——密码只在首次生成时显示一次。
+  用户名与密码哈希存储在 `data/admin.json`（已 gitignore）。
+- **用户名**：默认 `admin`，可通过环境变量 `ADMIN_USERNAME` 自定义（环境变量优先于文件）。
+- **登录**：打开页面后输入用户名和密码登录，整个应用都在登录之后。
 - **配置 API_KEY**：登录后点击右上角 **⚙️ 设置**，填入 API_KEY（可选 API_BASE）并保存。
   值写入 `data/settings.json`，重启后仍生效；未配置时回退到环境变量 `SEEDANCE_API_KEY`。
 - **持久化**：Docker 部署已将 `data/` 挂载为命名卷 `seedance-data`，
