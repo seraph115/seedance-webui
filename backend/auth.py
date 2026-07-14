@@ -6,6 +6,7 @@
 import hashlib
 import hmac
 import json
+import os
 import secrets
 import time
 from pathlib import Path
@@ -14,6 +15,9 @@ from fastapi import HTTPException, Request
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 ADMIN_FILE = DATA_DIR / "admin.json"
+
+# 管理员用户名：环境变量 ADMIN_USERNAME 优先，其次读文件，默认 admin（向后兼容旧文件）
+DEFAULT_USERNAME = "admin"
 
 PBKDF2_ITERATIONS = 240_000
 
@@ -51,12 +55,18 @@ def ensure_admin() -> str | None:
     password = secrets.token_urlsafe(15)
     salt = secrets.token_bytes(16)
     _save({
+        "username": os.getenv("ADMIN_USERNAME", DEFAULT_USERNAME),
         "salt": salt.hex(),
         "hash": _hash_password(password, salt, PBKDF2_ITERATIONS),
         "iterations": PBKDF2_ITERATIONS,
         "secret_key": secrets.token_hex(32),
     })
     return password
+
+
+def get_username() -> str:
+    """当前管理员用户名：环境变量优先，其次文件，最后默认 admin。"""
+    return os.getenv("ADMIN_USERNAME") or (_load() or {}).get("username") or DEFAULT_USERNAME
 
 
 def get_secret_key() -> str:
@@ -69,14 +79,15 @@ def get_secret_key() -> str:
     if not record or not record.get("secret_key"):
         password = ensure_admin()
         if password:
-            announce_password(password)
+            announce_credentials(get_username(), password)
         record = _load()
     return record["secret_key"]
 
 
-def announce_password(password: str) -> None:
-    """把一次性明文密码醒目地打印到控制台。"""
+def announce_credentials(username: str, password: str) -> None:
+    """把一次性明文账号密码醒目地打印到控制台。"""
     print("=" * 60)
+    print(f"  ADMIN USERNAME: {username}")
     print(f"  ADMIN PASSWORD (save this): {password}")
     print("=" * 60)
 
@@ -88,6 +99,12 @@ def verify_password(password: str) -> bool:
     salt = bytes.fromhex(record["salt"])
     actual = _hash_password(password, salt, int(record["iterations"]))
     return hmac.compare_digest(actual, record["hash"])
+
+
+def verify_credentials(username: str, password: str) -> bool:
+    """同时校验用户名与密码，两者都用常量时间比较。"""
+    username_ok = hmac.compare_digest((username or ""), get_username())
+    return username_ok and verify_password(password)
 
 
 def check_not_locked() -> None:

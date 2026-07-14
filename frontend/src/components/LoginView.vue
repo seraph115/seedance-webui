@@ -4,11 +4,16 @@ import { ElMessage } from 'element-plus'
 import { useAuth } from '../composables/useAuth'
 
 const { login } = useAuth()
+const username = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
 
 async function onSubmit() {
+  if (!username.value) {
+    error.value = '请输入用户名'
+    return
+  }
   if (!password.value) {
     error.value = '请输入密码'
     return
@@ -16,7 +21,7 @@ async function onSubmit() {
   loading.value = true
   error.value = ''
   try {
-    await login(password.value)
+    await login(username.value, password.value)
     ElMessage.success('登录成功')
   } catch (e) {
     error.value = e.message || '登录失败'
@@ -31,9 +36,16 @@ async function onSubmit() {
     <el-card class="login-card">
       <h2 class="title">🎬 SeeDance 登录</h2>
       <el-input
+        v-model="username"
+        placeholder="用户名"
+        size="large"
+        class="field"
+        @keyup.enter="onSubmit"
+      />
+      <el-input
         v-model="password"
         type="password"
-        placeholder="管理员密码"
+        placeholder="密码"
         show-password
         size="large"
         @keyup.enter="onSubmit"
@@ -60,6 +72,9 @@ async function onSubmit() {
 .title {
   text-align: center;
   margin: 0 0 20px;
+}
+.field {
+  margin-bottom: 12px;
 }
 .btn {
   width: 100%;

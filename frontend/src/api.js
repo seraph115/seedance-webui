@@ -31,8 +31,8 @@ export function fetchStatus(taskId) {
 }
 
 // ---- 鉴权 ----
-export function login(password) {
-  return http.post('/login', { password }).then((r) => r.data)
+export function login(username, password) {
+  return http.post('/login', { username, password }).then((r) => r.data)
 }
 
 export function logout() {
