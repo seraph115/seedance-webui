@@ -13,6 +13,7 @@ import { useHistory } from './composables/useHistory'
 const { history, add, update, remove, clear } = useHistory()
 const { authed, ready, checkSession, logout } = useAuth()
 const showSettings = ref(false)
+const formRef = ref(null) // 生成参数表单，用于点历史时回填参数
 
 const POLL_MS = 5000
 // 终态：其余一律视为“进行中”，需要继续轮询
@@ -86,6 +87,12 @@ async function onSubmit(payload) {
       mode: payload.mode,
       prompt: payload.prompt,
       model: payload.model || '',
+      // 存完整生成参数，点历史时可回填表单
+      duration: payload.duration,
+      resolution: payload.resolution,
+      first_frame: payload.first_frame || '',
+      last_frame: payload.last_frame || '',
+      images: payload.images || [],
       status: 'IN_PROGRESS',
       progress: '0%',
       videoUrl: '',
@@ -108,6 +115,7 @@ async function onSubmit(payload) {
 function onSelect(item) {
   submitError.value = '' // 切到具体任务时清掉提交错误
   selectedId.value = item.taskId
+  formRef.value?.applyHistory(item) // 把该条任务的提示词与参数回填到生成参数表单
   if (!isTerminal(item.status)) startPolling(item.taskId)
 }
 
@@ -154,7 +162,7 @@ onUnmounted(stopAll)
     <el-main>
       <div class="grid">
         <div class="left">
-          <GenerateForm :loading="loading" @submit="onSubmit" />
+          <GenerateForm ref="formRef" :loading="loading" @submit="onSubmit" />
         </div>
         <div class="middle">
           <ResultPanel
