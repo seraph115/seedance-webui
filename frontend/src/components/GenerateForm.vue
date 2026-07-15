@@ -32,6 +32,21 @@ onMounted(async () => {
   }
 })
 
+// 点历史记录时回填该条任务的提示词与参数（旧记录缺的字段保持现值/清空）
+function applyHistory(item) {
+  if (!item) return
+  form.mode = item.mode || 'text'
+  form.prompt = item.prompt || ''
+  if (item.model) form.model = item.model
+  if (item.duration != null) form.duration = item.duration
+  if (item.resolution) form.resolution = item.resolution
+  form.first_frame = item.first_frame || ''
+  form.last_frame = item.last_frame || ''
+  form.imagesText = (item.images || []).join('\n')
+}
+
+defineExpose({ applyHistory })
+
 function onSubmit() {
   if (!form.prompt.trim()) {
     ElMessage.warning('请输入提示词')
