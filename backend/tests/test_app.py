@@ -47,6 +47,37 @@ def test_settings_roundtrip(client):
     assert "sk-abcdef2345" not in str(body)
 
 
+def test_download_video_auth_and_scheme(client):
+    c, username, password = client
+    # 未登录 → 401
+    assert c.get("/api/download-video", params={"url": "https://x/v.mp4"}).status_code == 401
+    c.post("/api/login", json={"username": username, "password": password})
+    # 非 http/https → 400
+    assert c.get("/api/download-video", params={"url": "ftp://x/v.mp4"}).status_code == 400
+
+
+def test_download_video_streams_attachment(client, monkeypatch):
+    c, username, password = client
+    c.post("/api/login", json={"username": username, "password": password})
+    import app as app_module
+
+    class FakeResp:
+        headers = {"Content-Type": "video/mp4"}
+
+        def raise_for_status(self):
+            pass
+
+        def iter_content(self, chunk_size):
+            yield b"fake-bytes"
+
+    monkeypatch.setattr(app_module.requests, "get", lambda *a, **k: FakeResp())
+    r = c.get("/api/download-video", params={"url": "https://cdn.example.com/out/v123.mp4"})
+    assert r.status_code == 200
+    assert "attachment" in r.headers["content-disposition"]
+    assert "v123.mp4" in r.headers["content-disposition"]
+    assert r.content == b"fake-bytes"
+
+
 def test_generate_requires_configured_key(client, monkeypatch):
     import config
     monkeypatch.setattr(config, "API_KEY", "")               # 无 env、无文件

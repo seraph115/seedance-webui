@@ -10,8 +10,11 @@
 """
 import os
 from pathlib import Path
+from urllib.parse import urlparse, quote
 
+import requests
 from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -109,6 +112,31 @@ def status(task_id: str):
         return seedance.query(task_id)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"查询失败：{e}")
+
+
+@app.get("/api/download-video", dependencies=[Depends(auth.require_auth)])
+def download_video(url: str):
+    """代理下载视频。
+
+    视频在上游对象存储（跨域）上，<a download> 属性对跨域 URL 无效，
+    浏览器只会播放而不下载；由后端转流并带 Content-Disposition 才能真正下载。
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="仅支持 http/https 视频地址")
+    try:
+        upstream = requests.get(url, stream=True, timeout=config.REQUEST_TIMEOUT)
+        upstream.raise_for_status()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"下载失败:{e}")
+    filename = parsed.path.rsplit("/", 1)[-1] or "video.mp4"
+    if "." not in filename:
+        filename += ".mp4"
+    return StreamingResponse(
+        upstream.iter_content(chunk_size=64 * 1024),
+        media_type=upstream.headers.get("Content-Type", "video/mp4"),
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
+    )
 
 
 @app.post("/api/login")

@@ -206,7 +206,8 @@ onUnmounted(stopAll)
 }
 .grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 340px;
+  /* 左（生成参数）与右（历史记录）同宽，中间结果区自适应 */
+  grid-template-columns: 340px 1fr 340px;
   gap: 16px;
   align-items: start;
 }

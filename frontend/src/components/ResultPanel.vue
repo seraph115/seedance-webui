@@ -94,7 +94,11 @@ const tagType = computed(() => {
         <video :src="videoUrl" controls autoplay loop class="video" />
         <div class="links">
           <el-link type="primary" :href="videoUrl" target="_blank">在新窗口打开</el-link>
-          <el-link type="success" :href="videoUrl" download>下载视频</el-link>
+          <!-- download 属性对跨域 URL 无效，改走后端代理转流才能真正下载 -->
+          <el-link
+            type="success"
+            :href="`/api/download-video?url=${encodeURIComponent(videoUrl)}`"
+          >下载视频</el-link>
         </div>
       </div>
 
